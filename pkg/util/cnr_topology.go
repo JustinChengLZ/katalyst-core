@@ -108,7 +108,7 @@ func (z *TopologyZoneGenerator) AddNode(parent *ZoneNode, current ZoneNode) erro
 			top.Children[current] = newZoneTopology
 			z.subZoneTopology[current] = newZoneTopology
 		} else {
-			return fmt.Errorf("zone node %v parent %v not found", current, parent)
+			return fmt.Errorf("zone node %v parent %v not found", current, *parent)
 		}
 	}
 	return nil
