@@ -18,9 +18,10 @@ package util
 
 import (
 	"fmt"
-	"github.com/kubewharf/katalyst-core/pkg/util/general"
 	"sort"
 	"strconv"
+
+	"github.com/kubewharf/katalyst-core/pkg/util/general"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
