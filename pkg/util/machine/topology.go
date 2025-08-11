@@ -737,8 +737,10 @@ func GetInterfaceSocketInfo(nics []InterfaceInfo, cpuTopology *CPUTopology) (*Al
 
 	// Assign sockets to each NIC
 	for _, nic := range nics {
+		general.Infof("Getting interface socket info for %v", nic)
 		var assignedSockets []int
 		socketBind, ok := cpuTopology.NUMANodeIDToSocketID[nic.NumaNode]
+		general.Infof("Get assigned socket id %v", socketBind)
 		if !ok {
 			socketBind = -1
 		}
@@ -755,12 +757,14 @@ func GetInterfaceSocketInfo(nics []InterfaceInfo, cpuTopology *CPUTopology) (*Al
 		}
 		// Store NIC to socket assignment
 		ifIndex2Sockets[nic.IfIndex] = assignedSockets
+		general.Infof("Get total assigned sockets %v", assignedSockets)
 		for _, socket := range assignedSockets {
 			// Store socket to NIC mapping and update usage count
 			socket2IfIndexes[socket] = append(socket2IfIndexes[socket], nic.IfIndex)
 			socketUsage[socket]++
 		}
 	}
+
 	return &AllocatableInterfaceSocketInfo{
 		IfIndex2Sockets:  ifIndex2Sockets,
 		Socket2IfIndexes: socket2IfIndexes,
