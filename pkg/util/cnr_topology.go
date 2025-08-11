@@ -18,6 +18,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/kubewharf/katalyst-core/pkg/util/general"
 	"sort"
 	"strconv"
 
@@ -88,6 +89,7 @@ func NewZoneTopologyGenerator() *TopologyZoneGenerator {
 //   - if parent is not nil, it will be added to the sub topology of the parent,
 //     the parent must already add into this generator before
 func (z *TopologyZoneGenerator) AddNode(parent *ZoneNode, current ZoneNode) error {
+	general.Infof("Added parent %v and current %v", parent, current)
 	if parent == nil {
 		if _, ok := z.rootZoneTopology.Children[current]; !ok {
 			newZoneTopology := NewZoneTopology()
