@@ -693,6 +693,7 @@ func GetInterfaceSocketInfo(nics []InterfaceInfo, cpuTopology *CPUTopology) (*Al
 	}
 
 	sockets := cpuTopology.CPUDetails.Sockets().ToSliceInt()
+	general.Infof("available sockets: %v", sockets)
 	// Map NIC indices to their assigned sockets
 	ifIndex2Sockets := make(map[int][]int)
 	// Map sockets to the NIC indices assigned to them
