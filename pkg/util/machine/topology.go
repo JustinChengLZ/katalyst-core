@@ -691,6 +691,7 @@ func GetInterfaceSocketInfo(nics []InterfaceInfo, cpuTopology *CPUTopology) (*Al
 	if cpuTopology == nil {
 		return nil, fmt.Errorf("get nil CPUTopology")
 	}
+	general.Infof("cpu details: %v", cpuTopology.CPUDetails)
 
 	sockets := cpuTopology.CPUDetails.Sockets().ToSliceInt()
 	general.Infof("available sockets: %v", sockets)
