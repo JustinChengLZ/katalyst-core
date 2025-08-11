@@ -1251,6 +1251,7 @@ func (p *StaticPolicy) getNICByName(nics []machine.InterfaceInfo, ifName string)
 // return the Socket id/index that the specified NIC attached to
 func (p *StaticPolicy) getSocketIDByNIC(nic machine.InterfaceInfo) (int, error) {
 	socketIDs, ok := p.agentCtx.IfIndex2Sockets[nic.IfIndex]
+	general.Infof("getSocketIDByNIC called with nic: %v and socketIds: %v", nic, socketIDs)
 	if !ok {
 		return -1, fmt.Errorf("failed to find the associated socket ID for the specified NIC %s - numanode: %d, ifIndex: %d, ifIndex2Sockets: %v",
 			nic.Iface, nic.NumaNode, nic.IfIndex, p.agentCtx.IfIndex2Sockets)
