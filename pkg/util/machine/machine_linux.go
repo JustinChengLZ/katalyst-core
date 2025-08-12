@@ -27,6 +27,8 @@ import (
 	"github.com/google/cadvisor/machine"
 	"github.com/google/cadvisor/utils/sysfs"
 
+	"github.com/kubewharf/katalyst-core/pkg/util/general"
+
 	"github.com/kubewharf/katalyst-core/pkg/config/agent/global"
 )
 
@@ -39,6 +41,7 @@ func GetKatalystMachineInfo(conf *global.MachineInfoConfiguration) (*KatalystMac
 	}
 
 	cpuTopology, memoryTopology, err := Discover(machineInfo)
+	general.Infof("Discovered cpuTopology: %v", cpuTopology)
 	if err != nil {
 		return nil, err
 	}
