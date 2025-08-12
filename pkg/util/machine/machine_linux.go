@@ -40,8 +40,9 @@ func GetKatalystMachineInfo(conf *global.MachineInfoConfiguration) (*KatalystMac
 		return nil, err
 	}
 
+	general.Infof("Got machine info: %+v", machineInfo)
 	cpuTopology, memoryTopology, err := Discover(machineInfo)
-	general.Infof("Discovered cpuTopology: %v", cpuTopology)
+	general.Infof("Discovered cpuTopology: %+v", cpuTopology)
 	if err != nil {
 		return nil, err
 	}
