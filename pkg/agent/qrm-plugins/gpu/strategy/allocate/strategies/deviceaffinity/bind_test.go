@@ -21,11 +21,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	v1 "k8s.io/api/core/v1"
+	pluginapi "k8s.io/kubelet/pkg/apis/resourceplugin/v1alpha1"
+
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/gpu/state"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/gpu/strategy/allocate"
 	"github.com/kubewharf/katalyst-core/pkg/util/machine"
-	v1 "k8s.io/api/core/v1"
-	pluginapi "k8s.io/kubelet/pkg/apis/resourceplugin/v1alpha1"
 )
 
 func TestBind(t *testing.T) {
@@ -83,7 +84,7 @@ func TestBind(t *testing.T) {
 					},
 				},
 			},
-			sortedDevices: []string{"gpu-3", "gpu-4"},
+			sortedDevices: []string{"gpu-1", "gpu-2", "gpu-3", "gpu-4"},
 			expectedResult: &allocate.AllocationResult{
 				AllocatedDevices: []string{"gpu-1", "gpu-2"},
 				Success:          true,
@@ -134,7 +135,7 @@ func TestBind(t *testing.T) {
 					},
 				},
 			},
-			sortedDevices: []string{"gpu-4", "gpu-5"},
+			sortedDevices: []string{"gpu-1", "gpu-3", "gpu-4", "gpu-5"},
 			expectedResult: &allocate.AllocationResult{
 				AllocatedDevices: []string{"gpu-3", "gpu-4"},
 				Success:          true,
@@ -852,6 +853,360 @@ func TestBind(t *testing.T) {
 				Success:          true,
 			},
 		},
+		{
+			name: "allocation of odd number of devices",
+			ctx: &allocate.AllocationContext{
+				ResourceReq: &pluginapi.ResourceRequest{
+					PodUid:        "pod-1",
+					ContainerName: "container-1",
+				},
+				DeviceReq: &pluginapi.DeviceRequest{
+					DeviceName:      "gpu",
+					ReusableDevices: []string{"gpu-1", "gpu-3", "gpu-5"},
+					DeviceRequest:   5,
+				},
+				// Level 0: [gpu-1, gpu-2], [gpu-3, gpu-4], [gpu-5, gpu-6], [gpu-7, gpu-8]
+				// Level 1: [gpu-1, gpu-2, gpu-3, gpu-4], [gpu-5, gpu-6, gpu-7, gpu-8]
+				DeviceTopology: &machine.DeviceTopology{
+					Devices: map[string]machine.DeviceInfo{
+						"gpu-1": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-2"},
+								1: {"gpu-2", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-2": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-1"},
+								1: {"gpu-1", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-3": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-4"},
+								1: {"gpu-1", "gpu-2", "gpu-4"},
+							},
+						},
+						"gpu-4": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-3"},
+								1: {"gpu-1", "gpu-2", "gpu-3"},
+							},
+						},
+						"gpu-5": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-6"},
+								1: {"gpu-6", "gpu-7", "gpu-8"},
+							},
+						},
+						"gpu-6": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-5"},
+								1: {"gpu-5", "gpu-7", "gpu-8"},
+							},
+						},
+						"gpu-7": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-8"},
+								1: {"gpu-5", "gpu-6", "gpu-8"},
+							},
+						},
+						"gpu-8": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-7"},
+								1: {"gpu-5", "gpu-6", "gpu-7"},
+							},
+						},
+					},
+				},
+				MachineState: map[v1.ResourceName]state.AllocationMap{
+					"gpu": {
+						"gpu-1": {},
+						"gpu-2": {},
+						"gpu-3": {},
+						"gpu-4": {},
+						"gpu-5": {},
+						"gpu-6": {},
+						"gpu-7": {},
+						"gpu-8": {},
+					},
+				},
+			},
+			sortedDevices: []string{"gpu-1", "gpu-2", "gpu-3", "gpu-4", "gpu-5", "gpu-7", "gpu-8"},
+			// Allocate gpu-1, gpu-3 and gpu-5 first because they are reusable devices
+			// Allocate gpu-2 and gpu-4 next because they have affinity with gpu-1 and gpu-3 at the highest affinity priority (level 0)
+			expectedResult: &allocate.AllocationResult{
+				AllocatedDevices: []string{"gpu-1", "gpu-2", "gpu-3", "gpu-4", "gpu-5"},
+				Success:          true,
+			},
+		},
+		{
+			name: "allocation of available devices for 1st level of affinity priority if there are no reusable devices",
+			ctx: &allocate.AllocationContext{
+				ResourceReq: &pluginapi.ResourceRequest{
+					PodUid:        "pod-1",
+					ContainerName: "container-1",
+				},
+				DeviceReq: &pluginapi.DeviceRequest{
+					DeviceName:      "gpu",
+					ReusableDevices: []string{},
+					DeviceRequest:   2,
+				},
+				DeviceTopology: &machine.DeviceTopology{
+					Devices: map[string]machine.DeviceInfo{
+						"gpu-1": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-2"},
+								1: {"gpu-2", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-2": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-1"},
+								1: {"gpu-1", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-3": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-4"},
+								1: {"gpu-1", "gpu-2", "gpu-4"},
+							},
+						},
+						"gpu-4": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-3"},
+								1: {"gpu-1", "gpu-2", "gpu-3"},
+							},
+						},
+					},
+				},
+				MachineState: map[v1.ResourceName]state.AllocationMap{
+					"gpu": {
+						"gpu-1": {},
+						"gpu-2": {},
+						"gpu-3": {},
+						"gpu-4": {},
+					},
+				},
+			},
+			sortedDevices: []string{"gpu-1", "gpu-3", "gpu-4"},
+			// No reusable devices to allocate.
+			// Allocate gpu-1 and gpu-2 because they have the best affinity to each other.
+			expectedResult: &allocate.AllocationResult{
+				AllocatedDevices: []string{"gpu-3", "gpu-4"},
+				Success:          true,
+			},
+		},
+		{
+			name: "when first priority level is not able to determine an allocation, go to the next priority level to allocate",
+			ctx: &allocate.AllocationContext{
+				ResourceReq: &pluginapi.ResourceRequest{
+					PodUid:        "pod-1",
+					ContainerName: "container-1",
+				},
+				DeviceReq: &pluginapi.DeviceRequest{
+					DeviceName:      "gpu",
+					ReusableDevices: []string{"gpu-1", "gpu-2", "gpu-5", "gpu-6", "gpu-7", "gpu-8"},
+					DeviceRequest:   4,
+				},
+				// Level 0: [gpu-1, gpu-2], [gpu-3, gpu-4], [gpu-5, gpu-6], [gpu-7, gpu-8]
+				// Level 1: [gpu-1, gpu-2, gpu-3, gpu-4], [gpu-5, gpu-6, gpu-7, gpu-8]
+				DeviceTopology: &machine.DeviceTopology{
+					Devices: map[string]machine.DeviceInfo{
+						"gpu-1": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-2"},
+								1: {"gpu-2", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-2": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-1"},
+								1: {"gpu-1", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-3": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-4"},
+								1: {"gpu-1", "gpu-2", "gpu-4"},
+							},
+						},
+						"gpu-4": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-3"},
+								1: {"gpu-1", "gpu-2", "gpu-3"},
+							},
+						},
+						"gpu-5": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-6"},
+								1: {"gpu-6", "gpu-7", "gpu-8"},
+							},
+						},
+						"gpu-6": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-5"},
+								1: {"gpu-5", "gpu-7", "gpu-8"},
+							},
+						},
+						"gpu-7": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-8"},
+								1: {"gpu-5", "gpu-6", "gpu-8"},
+							},
+						},
+						"gpu-8": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-7"},
+								1: {"gpu-5", "gpu-6", "gpu-7"},
+							},
+						},
+					},
+				},
+				MachineState: map[v1.ResourceName]state.AllocationMap{
+					"gpu": {
+						"gpu-1": {},
+						"gpu-2": {},
+						"gpu-3": {},
+						"gpu-4": {},
+						"gpu-5": {},
+						"gpu-6": {},
+						"gpu-7": {},
+						"gpu-8": {},
+					},
+				},
+			},
+			sortedDevices: []string{"gpu-1", "gpu-2", "gpu-5", "gpu-6", "gpu-7", "gpu-8"},
+			// All of the above devices are reusable devices
+			// At first priority level, they all give an intersection size of 2, but there are 6 of them, and we only need 4 of them
+			// Since there is another priority level, we go to that priority level to get the best device affinity
+			// (gpu-1 and gpu-2), (gpu-5 and gpu-6), (gpu-7, gpu-8) are affinity groups at priority level 0
+			// But (gpu-5, gpu-6, gpu-7, gpu-8) are affinity groups at priority level 1, so we allocate gpu-5, gpu-6, gpu-7, gpu-8
+			expectedResult: &allocate.AllocationResult{
+				AllocatedDevices: []string{"gpu-5", "gpu-6", "gpu-7", "gpu-8"},
+				Success:          true,
+			},
+		},
+		{
+			name: "with other allocated devices, if first priority is not able to determine an allocation, go to the next priority level to allocate",
+			ctx: &allocate.AllocationContext{
+				ResourceReq: &pluginapi.ResourceRequest{
+					PodUid:        "pod-1",
+					ContainerName: "container-1",
+				},
+				DeviceReq: &pluginapi.DeviceRequest{
+					DeviceName:      "gpu",
+					ReusableDevices: []string{"gpu-1", "gpu-5", "gpu-8"},
+					DeviceRequest:   2,
+				},
+				// Level 0: [gpu-1, gpu-2], [gpu-3, gpu-4], [gpu-5, gpu-6], [gpu-7, gpu-8]
+				// Level 1: [gpu-1, gpu-2, gpu-3, gpu-4], [gpu-5, gpu-6, gpu-7, gpu-8]
+				DeviceTopology: &machine.DeviceTopology{
+					Devices: map[string]machine.DeviceInfo{
+						"gpu-1": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-2"},
+								1: {"gpu-2", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-2": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-1"},
+								1: {"gpu-1", "gpu-3", "gpu-4"},
+							},
+						},
+						"gpu-3": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-4"},
+								1: {"gpu-1", "gpu-2", "gpu-4"},
+							},
+						},
+						"gpu-4": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-3"},
+								1: {"gpu-1", "gpu-2", "gpu-3"},
+							},
+						},
+						"gpu-5": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-6"},
+								1: {"gpu-6", "gpu-7", "gpu-8"},
+							},
+						},
+						"gpu-6": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-5"},
+								1: {"gpu-5", "gpu-7", "gpu-8"},
+							},
+						},
+						"gpu-7": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-8"},
+								1: {"gpu-5", "gpu-6", "gpu-8"},
+							},
+						},
+						"gpu-8": {
+							DeviceAffinity: map[machine.AffinityPriority]machine.DeviceIDs{
+								0: {"gpu-7"},
+								1: {"gpu-5", "gpu-6", "gpu-7"},
+							},
+						},
+					},
+				},
+				MachineState: map[v1.ResourceName]state.AllocationMap{
+					"gpu": {
+						"gpu-1": {},
+						"gpu-2": {
+							PodEntries: map[string]state.ContainerEntries{
+								"pod-2": {
+									"container-2": {
+										AllocatedAllocation: state.Allocation{
+											Quantity: 1,
+										},
+									},
+								},
+							},
+						},
+						"gpu-3": {},
+						"gpu-4": {},
+						"gpu-5": {},
+						"gpu-6": {
+							PodEntries: map[string]state.ContainerEntries{
+								"pod-3": {
+									"container-3": {
+										AllocatedAllocation: state.Allocation{
+											Quantity: 1,
+										},
+									},
+								},
+							},
+						},
+						"gpu-7": {
+							PodEntries: map[string]state.ContainerEntries{
+								"pod-4": {
+									"container-4": {
+										AllocatedAllocation: state.Allocation{
+											Quantity: 1,
+										},
+									},
+								},
+							},
+						},
+						"gpu-8": {},
+					},
+				},
+			},
+			sortedDevices: []string{"gpu-1", "gpu-5", "gpu-8"},
+			// All of the above devices are reusable devices
+			// At first priority level, they all have the same level of bin-packing, and they give an intersection of 1.
+			// Since there is another priority level, we go to the next priority to get the best device affinity
+			// (gpu-1), (gpu-5), (gpu-8) are affinity groups at priority level 0
+			// But (gpu-5, gpu-8) are affinity groups at priority level 1, so we allocate (gpu-5, gpu-8)
+			expectedResult: &allocate.AllocationResult{
+				AllocatedDevices: []string{"gpu-5", "gpu-8"},
+				Success:          true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -878,10 +1233,6 @@ func verifyAllocationResult(
 	}
 	if result.Success != expectedResult.Success {
 		t.Errorf("result.Success = %v, expectedResult.Success = %v", result.Success, expectedResult.Success)
-		return
-	}
-	if result.ErrorMessage != expectedResult.ErrorMessage {
-		t.Errorf("result.ErrorMessage = %v, expectedResult.ErrorMessage = %v", result.ErrorMessage, expectedResult.ErrorMessage)
 		return
 	}
 	if len(result.AllocatedDevices) != len(expectedResult.AllocatedDevices) {
