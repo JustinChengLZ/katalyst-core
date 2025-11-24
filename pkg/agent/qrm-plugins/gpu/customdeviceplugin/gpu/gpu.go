@@ -218,6 +218,9 @@ func (p *GPUDevicePlugin) AllocateAssociatedDevice(
 		"qosLevel", qosLevel,
 		"allocatedDevices", allocatedDevices)
 
+	// call shareGPUManager to update GPU device state
+	p.BasePlugin.ShareGPUManager.Allocate(ctx, gpuDeviceAllocationInfo)
+
 	return &pluginapi.AssociatedDeviceAllocationResponse{
 		AllocationResult: &pluginapi.AssociatedDeviceAllocation{
 			AllocatedDevices: allocatedDevices,
