@@ -151,6 +151,11 @@ func (p *StaticPolicy) Start() (err error) {
 		general.Errorf("start %v failed, err: %v", gpuconsts.ClearResidualState, err)
 	}
 
+	err = p.BasePlugin.Run(p.stopCh)
+	if err != nil {
+		return fmt.Errorf("share gpu manager run failed with error: %w", err)
+	}
+
 	go wait.Until(func() {
 		periodicalhandler.ReadyToStartHandlersByGroup(appqrm.QRMGPUPluginPeriodicalHandlerGroupName)
 	}, 5*time.Second, p.stopCh)

@@ -53,6 +53,8 @@ type BasePlugin struct {
 	State state.State
 	// Registry of device topology providers
 	DeviceTopologyRegistry *machine.DeviceTopologyRegistry
+	// ShareGPUManager is a manager that manages share GPU devices
+	ShareGPUManager ShareGPUManager
 
 	// Registry of default resource state generators
 	DefaultResourceStateGeneratorRegistry *state.DefaultResourceStateGeneratorRegistry
@@ -76,6 +78,7 @@ func NewBasePlugin(
 
 		DeviceTopologyRegistry:                machine.NewDeviceTopologyRegistry(),
 		DefaultResourceStateGeneratorRegistry: state.NewDefaultResourceStateGeneratorRegistry(),
+		ShareGPUManager:                       NewShareGPUManager(),
 
 		deviceNameToTypeMap: make(map[string]string),
 	}, nil
@@ -90,6 +93,11 @@ func (p *BasePlugin) InitState() error {
 	}
 
 	p.State = stateImpl
+	return nil
+}
+
+func (p *BasePlugin) Run(stopCh <-chan struct{}) error {
+	go p.ShareGPUManager.Run(p, stopCh)
 	return nil
 }
 
