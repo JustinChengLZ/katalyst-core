@@ -1039,9 +1039,9 @@ func (p *StaticPolicy) calculateHints(req *pluginapi.ResourceRequest) (map[strin
 	}
 
 	nics := p.nicManager.GetNICs()
-	// return empty hints immediately if no healthy nics on this node
+	// return error immediately if no healthy nics on this node and request is more than 0
 	if len(nics.HealthyNICs) == 0 && reqInt > 0 {
-		return hints, nil
+		return nil, fmt.Errorf("no healthy NICs found: %v", strings.Join(nics.UnhealthyReasons, ","))
 	}
 
 	candidateNICs := nics.HealthyNICs

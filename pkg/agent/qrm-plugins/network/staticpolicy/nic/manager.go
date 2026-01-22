@@ -18,6 +18,7 @@ package nic
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -126,9 +127,10 @@ func initHealthCheckers(registry checker.Registry, enableCheckers []string) (map
 
 func (n *nicManagerImpl) checkNICs(nics []machine.InterfaceInfo) (*NICs, error) {
 	var (
-		healthyNICs   []machine.InterfaceInfo
-		unHealthyNICs []machine.InterfaceInfo
-		errList       []error
+		healthyNICs      []machine.InterfaceInfo
+		unHealthyNICs    []machine.InterfaceInfo
+		unhealthyReasons []string
+		errList          []error
 	)
 
 	for _, nic := range nics {
@@ -168,6 +170,7 @@ func (n *nicManagerImpl) checkNICs(nics []machine.InterfaceInfo) (*NICs, error) 
 						metrics.MetricTag{Key: "checker", Val: name},
 					)
 				}
+				unhealthyReasons = append(unhealthyReasons, fmt.Sprintf("health check %v failed", name))
 			}
 		}
 	}
@@ -177,7 +180,8 @@ func (n *nicManagerImpl) checkNICs(nics []machine.InterfaceInfo) (*NICs, error) 
 	}
 
 	return &NICs{
-		HealthyNICs:   healthyNICs,
-		UnhealthyNICs: unHealthyNICs,
+		HealthyNICs:      healthyNICs,
+		UnhealthyNICs:    unHealthyNICs,
+		UnhealthyReasons: unhealthyReasons,
 	}, nil
 }
