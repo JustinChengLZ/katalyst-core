@@ -21,6 +21,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/kubewharf/katalyst-core/pkg/util/general"
 	"github.com/kubewharf/katalyst-core/pkg/util/machine"
 )
 
@@ -58,7 +59,8 @@ func GenerateMachineStateFromPodEntries(
 	for resourceName, podEntries := range podResourceEntries {
 		generator, ok := defaultMachineStateGenerators.GetGenerator(string(resourceName))
 		if !ok {
-			return nil, fmt.Errorf("GetGenerator for resource %s failed", resourceName)
+			general.Warningf("generator for resource %s does not exist", resourceName)
+			continue
 		}
 
 		allocationMap, err := GenerateResourceStateFromPodEntries(podEntries, generator)
