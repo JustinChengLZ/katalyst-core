@@ -44,6 +44,7 @@ import (
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/commonstate"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/gpu/state"
 	"github.com/kubewharf/katalyst-core/pkg/config"
+	qrmconfig "github.com/kubewharf/katalyst-core/pkg/config/agent/qrm"
 	"github.com/kubewharf/katalyst-core/pkg/metaserver"
 	metaagent "github.com/kubewharf/katalyst-core/pkg/metaserver/agent"
 	"github.com/kubewharf/katalyst-core/pkg/metaserver/agent/pod"
@@ -330,6 +331,9 @@ func TestGpuReporterPlugin_GetReportContent(t *testing.T) {
 		expectedSpec     []*nodev1alpha1.Property
 		expectedStatus   []*nodev1alpha1.TopologyZone
 		expectedErr      bool
+		// disableRequiredDeviceAffinity, when true, sets RequiredDeviceAffinity=false on the
+		// reporter config. Otherwise the default for tests is true.
+		disableRequiredDeviceAffinity bool
 	}{
 		{
 			name: "Able to get report content for one dimension",
@@ -682,6 +686,307 @@ func TestGpuReporterPlugin_GetReportContent(t *testing.T) {
 					PropertyValues: []string{"pcie", "numa"},
 				},
 			},
+			expectedStatus: []*nodev1alpha1.TopologyZone{
+				{
+					Type: nodev1alpha1.TopologyTypeSocket,
+					Name: "0",
+					Children: []*nodev1alpha1.TopologyZone{
+						{
+							Type: nodev1alpha1.TopologyTypeNuma,
+							Name: "0",
+							Children: []*nodev1alpha1.TopologyZone{
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-0",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "0",
+										},
+										{
+											Name:  "pcie",
+											Value: "0",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-1",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "0",
+										},
+										{
+											Name:  "pcie",
+											Value: "0",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-2",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "0",
+										},
+										{
+											Name:  "pcie",
+											Value: "1",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-3",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "0",
+										},
+										{
+											Name:  "pcie",
+											Value: "1",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Type: nodev1alpha1.TopologyTypeSocket,
+					Name: "1",
+					Children: []*nodev1alpha1.TopologyZone{
+						{
+							Type: nodev1alpha1.TopologyTypeNuma,
+							Name: "1",
+							Children: []*nodev1alpha1.TopologyZone{
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-4",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "1",
+										},
+										{
+											Name:  "pcie",
+											Value: "2",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-5",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "1",
+										},
+										{
+											Name:  "pcie",
+											Value: "2",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-6",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "1",
+										},
+										{
+											Name:  "pcie",
+											Value: "3",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+								{
+									Type: nodev1alpha1.TopologyTypeGPU,
+									Name: "gpu-7",
+									Attributes: []nodev1alpha1.Attribute{
+										{
+											Name:  "numa",
+											Value: "1",
+										},
+										{
+											Name:  "pcie",
+											Value: "3",
+										},
+									},
+									Resources: nodev1alpha1.Resources{
+										Allocatable: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+										Capacity: &v1.ResourceList{
+											"test-gpu": resource.MustParse("1"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:                          "Resource property field is omitted when RequiredDeviceAffinity is false",
+			disableRequiredDeviceAffinity: true,
+			// Same 2-dimension device topology as the case above, but with
+			// RequiredDeviceAffinity disabled. The status report should match,
+			// but the resource-property spec field must be absent.
+			deviceTopology: &machine.DeviceTopology{
+				PriorityDimensions: []string{"pcie", "numa"},
+				Devices: map[string]machine.DeviceInfo{
+					"gpu-0": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{0},
+						Dimensions: map[string]string{
+							"pcie": "0",
+							"numa": "0",
+						},
+					},
+					"gpu-1": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{0},
+						Dimensions: map[string]string{
+							"pcie": "0",
+							"numa": "0",
+						},
+					},
+					"gpu-2": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{0},
+						Dimensions: map[string]string{
+							"pcie": "1",
+							"numa": "0",
+						},
+					},
+					"gpu-3": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{0},
+						Dimensions: map[string]string{
+							"pcie": "1",
+							"numa": "0",
+						},
+					},
+					"gpu-4": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{1},
+						Dimensions: map[string]string{
+							"pcie": "2",
+							"numa": "1",
+						},
+					},
+					"gpu-5": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{1},
+						Dimensions: map[string]string{
+							"pcie": "2",
+							"numa": "1",
+						},
+					},
+					"gpu-6": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{1},
+						Dimensions: map[string]string{
+							"pcie": "3",
+							"numa": "1",
+						},
+					},
+					"gpu-7": {
+						Health:    pluginapi.Healthy,
+						NumaNodes: []int{1},
+						Dimensions: map[string]string{
+							"pcie": "3",
+							"numa": "1",
+						},
+					},
+				},
+			},
+			machineTopology: []cadvisorapi.Node{
+				{
+					Id: 0,
+					Cores: []cadvisorapi.Core{
+						{SocketID: 0, Id: 0, Threads: []int{0, 4}},
+						{SocketID: 0, Id: 1, Threads: []int{1, 5}},
+						{SocketID: 0, Id: 2, Threads: []int{2, 6}},
+						{SocketID: 0, Id: 3, Threads: []int{3, 7}},
+					},
+				},
+				{
+					Id: 1,
+					Cores: []cadvisorapi.Core{
+						{SocketID: 1, Id: 4, Threads: []int{8, 12}},
+						{SocketID: 1, Id: 5, Threads: []int{9, 13}},
+						{SocketID: 1, Id: 6, Threads: []int{10, 14}},
+						{SocketID: 1, Id: 7, Threads: []int{11, 15}},
+					},
+				},
+			},
+			// expectedSpec is nil: when RequiredDeviceAffinity is false, the resource
+			// property field must not be reported.
+			expectedSpec: nil,
 			expectedStatus: []*nodev1alpha1.TopologyZone{
 				{
 					Type: nodev1alpha1.TopologyTypeSocket,
@@ -1843,6 +2148,7 @@ func TestGpuReporterPlugin_GetReportContent(t *testing.T) {
 			testConfig.PluginRegistrationDir = "test"
 			testConfig.GPUDeviceNames = gpuDeviceNames
 			testConfig.EnableKubeletCheckpointFallback = true
+			testConfig.RequiredDeviceAffinity = !tt.disableRequiredDeviceAffinity
 
 			resourceTypeName := v1.ResourceName("test-gpu-resource")
 			deviceIDs := make([]string, 0)
@@ -2519,4 +2825,77 @@ func TestGpuReporterPlugin_StartDisabledFallback(t *testing.T) {
 	// But Start/Stop should be successful.
 	err = p.Stop()
 	assert.NoError(t, err)
+}
+
+func TestGpuReporterPlugin_GetResourcePropertyReportField(t *testing.T) {
+	t.Parallel()
+
+	deviceTopology := &machine.DeviceTopology{
+		PriorityDimensions: []string{"numa"},
+		Devices: map[string]machine.DeviceInfo{
+			"gpu-0": {Dimensions: map[string]string{"numa": "0"}},
+		},
+	}
+	expectedProperties := []*nodev1alpha1.Property{
+		{PropertyName: propertyNameGPUTopology, PropertyValues: []string{"numa"}},
+	}
+
+	tests := []struct {
+		name         string
+		cfg          *qrmconfig.GPUQRMPluginConfig
+		wantNilField bool
+	}{
+		{
+			name:         "RequiredDeviceAffinity=true returns field",
+			cfg:          &qrmconfig.GPUQRMPluginConfig{RequiredDeviceAffinity: true},
+			wantNilField: false,
+		},
+		{
+			name:         "RequiredDeviceAffinity=false returns nil",
+			cfg:          &qrmconfig.GPUQRMPluginConfig{RequiredDeviceAffinity: false},
+			wantNilField: true,
+		},
+		{
+			name:         "nil config pointer treated as disabled",
+			cfg:          nil,
+			wantNilField: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			p := &gpuReporterPlugin{gpuQRMPluginConfig: tt.cfg}
+			field, err := p.getResourcePropertyReportField(deviceTopology)
+			assert.NoError(t, err)
+			if tt.wantNilField {
+				assert.Nil(t, field)
+				return
+			}
+			if assert.NotNil(t, field) {
+				assert.Equal(t, v1alpha1.FieldType_Spec, field.FieldType)
+				assert.Equal(t, util.CNRFieldNameNodeResourceProperties, field.FieldName)
+				var got []*nodev1alpha1.Property
+				assert.NoError(t, json.Unmarshal(field.Value, &got))
+				assert.Equal(t, expectedProperties, got)
+			}
+		})
+	}
+
+	// Dynamic-flip: confirm the stored pointer is read live (not a copy).
+	t.Run("dynamic flip is observed via pointer", func(t *testing.T) {
+		t.Parallel()
+		cfg := &qrmconfig.GPUQRMPluginConfig{RequiredDeviceAffinity: true}
+		p := &gpuReporterPlugin{gpuQRMPluginConfig: cfg}
+
+		field, err := p.getResourcePropertyReportField(deviceTopology)
+		assert.NoError(t, err)
+		assert.NotNil(t, field)
+
+		cfg.RequiredDeviceAffinity = false // simulate dynamic config update
+		field, err = p.getResourcePropertyReportField(deviceTopology)
+		assert.NoError(t, err)
+		assert.Nil(t, field)
+	})
 }

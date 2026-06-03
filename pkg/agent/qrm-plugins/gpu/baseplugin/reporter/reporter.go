@@ -40,6 +40,7 @@ import (
 	"github.com/kubewharf/katalyst-api/pkg/protocol/reporterplugin/v1alpha1"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/gpu/state"
 	"github.com/kubewharf/katalyst-core/pkg/config"
+	qrmconfig "github.com/kubewharf/katalyst-core/pkg/config/agent/qrm"
 	"github.com/kubewharf/katalyst-core/pkg/metaserver"
 	metaserverpod "github.com/kubewharf/katalyst-core/pkg/metaserver/agent/pod"
 	"github.com/kubewharf/katalyst-core/pkg/metrics"
@@ -122,6 +123,7 @@ type gpuReporterPlugin struct {
 	checkpointManager               checkpointmanager.CheckpointManager
 	kubeletDevicePluginPath         string
 	enableKubeletCheckpointFallback bool
+	gpuQRMPluginConfig              *qrmconfig.GPUQRMPluginConfig
 }
 
 var (
@@ -150,6 +152,7 @@ func newGPUReporterPlugin(emitter metrics.MetricEmitter, metaServer *metaserver.
 		checkpointManager:               checkpointManager,
 		kubeletDevicePluginPath:         conf.KubeletDevicePluginPath,
 		enableKubeletCheckpointFallback: conf.EnableKubeletCheckpointFallback,
+		gpuQRMPluginConfig:              conf.GPUQRMPluginConfig,
 	}
 	pluginWrapper, err := skeleton.NewRegistrationPluginWrapper(reporter, []string{conf.PluginRegistrationDir},
 		func(key string, value int64) {
@@ -357,6 +360,14 @@ func (p *gpuReporterPlugin) getTopologyZoneReportField(topologiesMap map[string]
 }
 
 func (p *gpuReporterPlugin) getResourcePropertyReportField(latestDeviceTopology *machine.DeviceTopology) (*v1alpha1.ReportField, error) {
+	// If required device affinity is disabled, do not report the resource property field.
+	// Because device affinity is disabled, we do not want to inform the scheduler of the priority dimensions so that pods will be scheduled
+	// even when it does not fulfill the affinity constraints.
+	// Read the flag via the stored pointer so dynamic config updates are honored.
+	if p.gpuQRMPluginConfig == nil || !p.gpuQRMPluginConfig.RequiredDeviceAffinity {
+		return nil, nil
+	}
+
 	resourceProperty := p.getGPUResourceProperty(latestDeviceTopology)
 	if resourceProperty == nil {
 		return nil, nil
