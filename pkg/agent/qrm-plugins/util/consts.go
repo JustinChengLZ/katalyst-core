@@ -31,6 +31,7 @@ const (
 	MetricNameCheckApplyV1Error                       = "check_apply_v1_error"
 	MetricNameGetAccompanyResourceTopologyHintsFailed = "get_accompany_resource_topology_hints_failed"
 	MetricNameAllocateAccompanyResourceFailed         = "allocate_accompany_resource_failed"
+	MetricNameAllocateAssociatedDeviceDuration        = "allocate_associated_device_duration"
 	MetricNameReleaseAccompanyResourceFailed          = "release_accompany_resource_failed"
 	MetricNameSyncResourcePackagePinnedCPUSetFailed   = "sync_resource_package_pinned_cpuset_failed"
 	MetricNameResourcePackagePinnedCPUSetSize         = "resource_package_pinned_cpuset_size"

@@ -19,6 +19,7 @@ package staticpolicy
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -685,6 +686,8 @@ func (p *StaticPolicy) AllocateAssociatedDevice(
 		return nil, fmt.Errorf("req is nil")
 	}
 
+	startTime := time.Now()
+
 	if err := p.ensureState(req.DeviceName); err != nil {
 		return nil, fmt.Errorf("ensure state failed: %v", err)
 	}
@@ -713,6 +716,21 @@ func (p *StaticPolicy) AllocateAssociatedDevice(
 			}
 		}
 		p.Unlock()
+
+		elapsed := time.Since(startTime)
+		_ = p.emitter.StoreFloat64(util.MetricNameAllocateAssociatedDeviceDuration,
+			float64(elapsed/time.Millisecond), metrics.MetricTypeNameRaw,
+			metrics.MetricTag{Key: "deviceName", Val: req.DeviceName},
+			metrics.MetricTag{Key: "accompanyResourceName", Val: req.AccompanyResourceName},
+			metrics.MetricTag{Key: "success", Val: strconv.FormatBool(respErr == nil)},
+		)
+		general.InfoS("finished",
+			"duration", elapsed,
+			"podUID", req.ResourceRequest.PodUid,
+			"containerName", req.ResourceRequest.ContainerName,
+			"deviceName", req.DeviceName,
+			"accompanyResourceName", req.AccompanyResourceName,
+		)
 	}()
 
 	// Find the target device that we want to allocate for
