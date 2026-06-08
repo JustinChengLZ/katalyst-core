@@ -45,6 +45,7 @@ import (
 	"github.com/kubewharf/katalyst-core/pkg/metaserver"
 	"github.com/kubewharf/katalyst-core/pkg/metrics"
 	"github.com/kubewharf/katalyst-core/pkg/util/general"
+	"github.com/kubewharf/katalyst-core/pkg/util/native"
 )
 
 // StaticPolicy is the static gpu policy
@@ -577,7 +578,7 @@ func (p *StaticPolicy) clearResidualState(
 	}
 
 	ctx := context.Background()
-	podList, err = p.MetaServer.GetPodList(ctx, nil)
+	podList, err = p.MetaServer.GetPodList(ctx, native.PodIsActive)
 	if err != nil {
 		general.Errorf("get pod list failed: %v", err)
 		return
