@@ -19,6 +19,7 @@ package allocation
 import (
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/gpu/strategy/allocate"
 	"github.com/kubewharf/katalyst-core/pkg/agent/qrm-plugins/gpu/strategy/allocate/registry"
+	"github.com/kubewharf/katalyst-core/pkg/metrics"
 	"github.com/kubewharf/katalyst-core/pkg/util/general"
 )
 
@@ -70,9 +71,14 @@ func (s *GenericAllocationStrategy) Allocate(ctx *allocate.AllocationContext) (*
 	var err error
 	resourceName := ctx.DeviceReq.DeviceName
 	allAvailableDevices := append(ctx.DeviceReq.ReusableDevices, ctx.DeviceReq.AvailableDevices...)
+	tags := []metrics.MetricTag{
+		{Key: "resourceName", Val: resourceName},
+		{Key: "strategy", Val: s.name},
+	}
+
 	// Apply filtering strategy
 	for _, fs := range s.getFilteringStrategies(ctx, resourceName) {
-		allAvailableDevices, err = fs.Filter(ctx, allAvailableDevices)
+		allAvailableDevices, err = withFilterTiming(fs, ctx.Emitter, tags...).Filter(ctx, allAvailableDevices)
 		if err != nil {
 			return &allocate.AllocationResult{
 				Success:      false,
@@ -82,7 +88,7 @@ func (s *GenericAllocationStrategy) Allocate(ctx *allocate.AllocationContext) (*
 	}
 
 	// Apply sorting strategy
-	sortedDevices, err := s.getSortingStrategy(ctx, resourceName).Sort(ctx, allAvailableDevices)
+	sortedDevices, err := withSortTiming(s.getSortingStrategy(ctx, resourceName), ctx.Emitter, tags...).Sort(ctx, allAvailableDevices)
 	if err != nil {
 		return &allocate.AllocationResult{
 			Success:      false,
@@ -91,7 +97,7 @@ func (s *GenericAllocationStrategy) Allocate(ctx *allocate.AllocationContext) (*
 	}
 
 	// Apply binding strategy
-	result, err := s.getBindingStrategy(ctx, resourceName).Bind(ctx, sortedDevices)
+	result, err := withBindTiming(s.getBindingStrategy(ctx, resourceName), ctx.Emitter, tags...).Bind(ctx, sortedDevices)
 	if err != nil {
 		return &allocate.AllocationResult{
 			Success:      false,

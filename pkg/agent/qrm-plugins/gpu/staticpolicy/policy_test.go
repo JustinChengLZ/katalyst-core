@@ -135,6 +135,7 @@ func makeTestStaticPolicy(t *testing.T) *StaticPolicy {
 
 	staticPolicy := &StaticPolicy{
 		BasePlugin:            basePlugin,
+		emitter:               metrics.DummyMetrics{},
 		resourcePlugins:       make(map[string]resourceplugin.ResourcePlugin),
 		customDevicePlugins:   make(map[string]customdeviceplugin.CustomDevicePlugin),
 		associatedDeviceNames: sets.NewString(),
